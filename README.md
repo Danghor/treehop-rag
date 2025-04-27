@@ -24,7 +24,7 @@ TreeHop is a lightweight, embedding-level framework designed to address the comp
 Please refer to [requirements.txt](/requirements.txt)
 
 
-### Embedding Preliminary
+## Embedding Preliminary
 This repository comes with evaluate embedding database, activate git lfs to clone the repository using `git lfs clone [LINK_TO_REPO]`, or pull the data under the existing repository using:
 ```sh
 git lfs pull
@@ -36,7 +36,7 @@ python init_train_vectors.py
 python init_multihop_rag.py
 ```
 
-### Sample Evaluate Code
+## Sample Evaluate Code
 Here we take MultiHop RAG evaluate dataset as retrieval embedding database to be used in the following sample.
 
 ```python
