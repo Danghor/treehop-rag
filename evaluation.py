@@ -57,7 +57,7 @@ def get_retriever(dataset_name, model):
     retriever = MultiHopRetriever(
         "BAAI/bge-m3",
         passages=f"embedding_data/{dataset_name}/eval_passages.jsonl",
-        passage_embeddings=f"embedding_data/{dataset_name}/eval_content_dense.npy",
+        faiss_index=f"embedding_data/{dataset_name}/index.faiss",
         tree_hop_model=model,
         projection_size=1024,
         save_or_load_index=True,

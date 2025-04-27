@@ -16,7 +16,7 @@ from tqdm.auto import tqdm
 from collections import namedtuple
 from typing import Union, List, Iterable
 
-import src.data, src.index, src.slurm, src.contriever, src.utils, src.normalize_text
+import src.data, src.index, src.slurm, src.normalize_text
 from src.utils import DEVICE
 from utils import load_file_jsonl, save_file_jsonl
 
@@ -42,7 +42,8 @@ class Retriever:
     def __init__(self,
         model_name_or_path: str,
         passages: str,
-        passage_embeddings: str,
+        passage_embeddings: str | None = None,
+        faiss_index: str | None = None,
         no_fp16=False,
         save_or_load_index=False,
         indexing_batch_size=1000000,
@@ -58,6 +59,10 @@ class Retriever:
         self.model_name_or_path = model_name_or_path
         self.passages = passages
         self.passage_embeddings = passage_embeddings
+        self.faiss_index = faiss_index
+        if passage_embeddings is None and faiss_index is None:
+            raise ValueError("Either passage_embeddings or faiss_index must be provided")
+
         self.no_fp16 = no_fp16
         self.save_or_load_index = save_or_load_index
         self.indexing_batch_size = indexing_batch_size
@@ -102,9 +107,7 @@ class Retriever:
         return embeddings
 
     def index_encoded_data(self, input_paths, indexing_batch_size):
-
-        input_paths = glob.glob(self.passage_embeddings)
-        input_paths = sorted(input_paths)
+        input_paths = sorted(glob.glob(input_paths))
         all_ids = []
         all_embeddings = []
         start_idx = 0
@@ -185,17 +188,22 @@ class Retriever:
                     self.indexer.index = faiss.index_cpu_to_all_gpus(self.indexer.index)
 
         # index all passages
-        input_paths = glob.glob(self.passage_embeddings)
+        input_paths = glob.glob(self.faiss_index or self.passage_embeddings)
         embeddings_dir = os.path.dirname(input_paths[0])
-        index_path = os.path.join(embeddings_dir, "index.faiss")
-        if self.save_or_load_index and os.path.exists(index_path):
+        if self.save_or_load_index \
+                and isinstance(self.faiss_index, str) \
+                and os.path.exists(self.faiss_index):
             self.indexer.deserialize_from(embeddings_dir)
-        else:
+        elif os.path.exists(self.passage_embeddings):
             self.index_encoded_data(self.passage_embeddings, self.indexing_batch_size)
             if self.save_or_load_index:
                 if getattr(self.index_device, "type", self.index_device).startswith("cuda"):
                     self.indexer.index = faiss.index_gpu_to_cpu(self.indexer.index)
                 self.indexer.serialize(embeddings_dir)
+        else:
+            raise FileNotFoundError(
+                f"Passage embeddings not found at {self.passage_embeddings}"
+            )
 
         # load passages
         self.passages = src.data.load_regular_data(self.passages)
@@ -264,10 +272,11 @@ class Retriever:
 class MultiHopRetriever(Retriever):
     def __init__(
         self,
-        model_name_or_path,
-        passages,
-        passage_embeddings,
+        model_name_or_path: str,
+        passages: str,
         tree_hop_model: TreeHopModel,
+        passage_embeddings: str | None = None,
+        faiss_index: str | None = None,
         no_fp16=True,
         save_or_load_index=False,
         indexing_batch_size=1000000,
@@ -283,6 +292,7 @@ class MultiHopRetriever(Retriever):
         super().__init__(
             model_name_or_path=model_name_or_path,
             passages=passages,
+            faiss_index=faiss_index,
             passage_embeddings=passage_embeddings,
             no_fp16=no_fp16,
             save_or_load_index=save_or_load_index,
