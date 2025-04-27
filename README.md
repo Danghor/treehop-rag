@@ -16,7 +16,7 @@ TreeHop is a lightweight, embedding-level framework designed to address the comp
 ## System Requirement
 > Ubuntu 18.06 LTS+ or MacOS 12.0+. \
 > Nvidia GPU with 32GB of RAM at minimum. \
-> 16GB of system RAM for [reproduction](#reproduction), 64GB for [training](#train-treehop). \
+> 16GB of system RAM for [reproduction](#paper-reproduction), 64GB for [training](#train-treehop). \
 > 50GB of free space on hard drive. \
 
 
