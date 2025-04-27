@@ -100,6 +100,6 @@ python evaluation.py \
 
 ## Train TreeHop
 Run the following code to generate graph and train TreeHop. Please refer to `parse_args` function in the `training.py` for arguments to this script.
-```python
+```sh
 python training.py --graph_cache_dir ./train_data/
 ```
