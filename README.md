@@ -1,12 +1,12 @@
 # TreeHop: Generate and Filter Next Query Embeddings Efficiently for Multi-hop Question Answering
 
 ## Introduction
-TreeHop is a lightweight, embedding-level framework designed to address the computational inefficiencies of traditional recursive retrieval paradigm in the realm of Retrieval-Augmented Generation (RAG). By eliminating the need for iterative LLM-based query rewriting, TreeHop significantly reduces latency while maintaining state-of-the-art performance. It achieves this through dynamic query embedding updates and pruning strategies, enabling a streamlined "Retrieve-Embed-Retrieve" workflow. \
+TreeHop is a lightweight, embedding-level framework designed to address the computational inefficiencies of traditional recursive retrieval paradigm in the realm of Retrieval-Augmented Generation (RAG). By eliminating the need for iterative LLM-based query rewriting, TreeHop significantly reduces latency while maintaining state-of-the-art performance. It achieves this through dynamic query embedding updates and pruning strategies, enabling a streamlined "Retrieve-Embed-Retrieve" workflow. 
 
 ![Simplified Iteration Enabled by TreeHop in RAG system](pics/TreeHop_iteration.png)
 
-## Why TreeHop?  
-- **Cost-Effective**: 25M parameters vs. billions in existing methods.
+## Why TreeHop?
+- **Cost-Effective**: 25M parameters vs. billions in existing methods, significantly reduces required computational resources.
 - **Speed**: 99% faster inference compared to iterative LLM approaches.
 - **Performant**: Maintains high recall with minimal computational overhead.
 
@@ -25,7 +25,7 @@ Please refer to [requirements.txt](/requirements.txt)
 
 
 ### Embedding Preliminary
-The repository comes with evaluate embedding database, activate git lfs to pull the data:
+This repository comes with evaluate embedding database, activate git lfs to clone the repository using `git lfs clone [LINK_TO_REPO]`, or pull the data under the existing repository using:
 ```sh
 git lfs pull
 ```
@@ -36,11 +36,56 @@ python init_train_vectors.py
 python init_multihop_rag.py
 ```
 
-## Reproduction
-### To evaluate TreeHop multihop retrieval, run the following code. Here we take 2WikiMultihop dataset and recall@5 with three hops as example.
-* To change dataset, replace `2wiki` with `musique` or `multihop_rag`.
-* Revise `n_hop` and `top_n` to change number of hops and top retrieval settings. 
-* Toggle `redundant_pruning` and `layerwise_top_pruning` to reproduce our ablation study on stop criterion.
+### Sample Evaluate Code
+Here we take MultiHop RAG evaluate dataset as retrieval embedding database to be used in the following sample.
+
+```python
+from evaluation import get_evaluate_model
+from passage_retrieval import MultiHopRetriever
+
+
+# load TreeHop model
+TREEHOP_MODEL_FILE = "checkpoint/treehop__epoch=8&n_neg=5&neg_mode=paired&g_size=2048&mlp_size=2048&n_mlp=3&n_head=1&dropout=0.1&batch_size=64&lr=6e-05&temperature=0.15&weight_decay=2e-08.pt"
+
+tree_hop_model = get_evaluate_model(TREEHOP_MODEL_FILE)
+
+# load retriever
+retriever = MultiHopRetriever(
+    "BAAI/bge-m3",
+    passages=f"embedding_data/2wiki/eval_passages.jsonl",
+    passage_embeddings=f"embedding_data/2wiki/eval_content_dense.npy",
+    tree_hop_model=tree_hop_model,
+    projection_size=1024,
+    save_or_load_index=True,
+    indexing_batch_size=10240,
+    index_device="cuda"
+)
+
+# multihop retrieval for single question
+retriever.multihop_search_passages(
+    "Did Engadget report a discount on the 13.6-inch MacBook Air before The Verge reported a discount on Samsung Galaxy Buds 2?",
+    n_hop=2,
+    top_n=5
+)
+
+# multihop retrieval for multiple questions, change batch sizes on your device
+retriever.multihop_search_passages(
+    LIST_OF_QUESTIONS,
+    n_hop=2,
+    top_n=5,
+    index_batch_size=2048,
+    generate_batch_size=1024
+)
+```
+Notes: The passage jsonl file contains id, title and text for each passage in the retrieval database, and the passage_embeddings file contains passage embeddings in numpy array format. To replace them with your own database, please refer to [init_multihop_rag.py](init_multihop_rag.py) and create them for yourself.
+For more detailed structure of passages file, please refer to [MultiHop RAG evaluate passages](embedding_data/multihop_rag/eval_passages.jsonl).
+
+
+## Paper Reproduction
+To evaluate TreeHop multihop retrieval, run the following code. Here we take 2WikiMultihop dataset and recall@5 with three hops as example.
+> * To change dataset, replace `2wiki` with `musique` or `multihop_rag`.
+> * Revise `n_hop` and `top_n` to change number of hops and top retrieval settings. 
+> * Toggle `redundant_pruning` and `layerwise_top_pruning` to reproduce our ablation study on stop criterion.
 
 ```sh
 python evaluation.py \
