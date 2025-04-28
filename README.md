@@ -11,7 +11,7 @@ TreeHop is a lightweight, embedding-level framework designed to address the comp
 ## Why TreeHop?
 - **Cost-Effective**: 25M parameters vs. billions in existing methods, significantly reduces required computational resources.
 - **Speed**: 99% faster inference compared to iterative LLM approaches.
-- **Performant**: Maintains high recall with minimal computational overhead.
+- **Performant**: Maintains high recall with controlled number of retrieved passages.
 
 ![Main Experiment](pics/main_experiment.png)
 
@@ -23,24 +23,28 @@ TreeHop is a lightweight, embedding-level framework designed to address the comp
 > 50GB of free space on hard drive.
 
 
-## Python Environment
-Please refer to [requirements.txt](/requirements.txt)
+### Python Environment
+Please refer to [requirements.txt](/requirements.txt).
 
 
-## Embedding Preliminary
-This repository comes with evaluate embedding database, activate git lfs to clone the repository using `git lfs clone [LINK_TO_REPO]`, or pull the data under the existing repository using:
+## Preliminaries
+This repository comes with model parameters and evaluate embedding database, activate git lfs to clone the repository using `git lfs clone [LINK_TO_REPO]`, or pull the data under the existing local repository using:
 ```sh
 git lfs pull
 ```
 
-For full embedding database generation, run the following two scripts that generate training and evaluate embedding database.
+### Embedding Databases
+Run the following two scripts that generate all necessary training and evaluate embedding databases.
+They are not required if you do not plan to train TreeHop, as all necessary evaluate embedding databases are provided in the repository.
+We adopt [BGE-m3](https://arxiv.org/abs/2402.03216) for embedding generation, upon which we also train our TreeHop model for multi-hop retrieval.
 ```sh
 python init_train_vectors.py
 python init_multihop_rag.py
 ```
 
-## Sample Evaluate Code
-Here we take MultiHop RAG evaluate dataset as embedding database to be used in the following sample.
+## Multi-hop Retrieval with TreeHop: How-to-Use
+Here we take [MultiHop RAG evaluate dataset](https://arxiv.org/abs/2401.15391) as embedding database in the following sample code.
+For code related to file arguments `passage_embeddings` and `faiss_index` in the `MultiHopRetriever`, please refer to [preliminaries](#preliminaries).
 
 ```python
 from evaluation import get_evaluate_model
@@ -48,7 +52,9 @@ from passage_retrieval import MultiHopRetriever
 
 
 # load TreeHop model
-TREEHOP_MODEL_FILE = "checkpoint/treehop__epoch=8&n_neg=5&neg_mode=paired&g_size=2048&mlp_size=2048&n_mlp=3&n_head=1&dropout=0.1&batch_size=64&lr=6e-05&temperature=0.15&weight_decay=2e-08.pt"
+TREEHOP_MODEL_FILE = ("checkpoint/treehop__epoch=8&n_neg=5&neg_mode=paired"
+                      "&g_size=2048&mlp_size=2048&n_mlp=3&n_head=1&dropout=0.1"
+                      "&batch_size=64&lr=6e-05&temperature=0.15&weight_decay=2e-08.pt")
 
 tree_hop_model = get_evaluate_model(TREEHOP_MODEL_FILE)
 
@@ -56,9 +62,9 @@ tree_hop_model = get_evaluate_model(TREEHOP_MODEL_FILE)
 retriever = MultiHopRetriever(
     "BAAI/bge-m3",
     passages="embedding_data/multihop_rag/eval_passages.jsonl",
-    # comment out this if faiss index file has not yet initialized
-    # passage_embeddings=f"embedding_data/multihop_rag/eval_content_dense.npy",
-    faiss_index="embedding_data/multihop_rag/index.faiss",
+    passage_embeddings=f"embedding_data/multihop_rag/eval_content_dense.npy",
+    # uncomment this if faiss index is initialized, resulting in a faster loading
+    # faiss_index="embedding_data/multihop_rag/index.faiss",
     tree_hop_model=tree_hop_model,
     projection_size=1024,
     save_or_load_index=True,
@@ -74,7 +80,8 @@ The `multihop_search_passages` method supports retrieving both single query and 
 For single query:
 ```python
 retrieve_result = retriever.multihop_search_passages(
-    "Did Engadget report a discount on the 13.6-inch MacBook Air before The Verge reported a discount on Samsung Galaxy Buds 2?",
+    "Did Engadget report a discount on the 13.6-inch MacBook Air \
+        before The Verge reported a discount on Samsung Galaxy Buds 2?",
     n_hop=2,
     top_n=5
 )
@@ -108,9 +115,11 @@ retrieve_result = retriever.multihop_search_passages(
 )
 # the retrieve_result.tree_hop_graph is a list of networkx objects correspondent to the LIST_OF_QUESTIONS.
 # take the first query for example, to draw the respective multihop path:
-retrieve_result.tree_hop_graph[0].plot_tree()
+retrieval_tree = retrieve_result.tree_hop_graph[0]
+retrieval_tree.plot_tree()
 
-# 
+# following Networkx api, to check the nodes representing passages in the retrieval graph:
+retrieval_tree.nodes(data=True)
 ```
 
 ## Paper Reproduction
@@ -131,7 +140,8 @@ python evaluation.py \
 
 
 ## Train TreeHop
-Run the following code to generate graph and train TreeHop. Please refer to `parse_args` function in the `training.py` for arguments to this script.
+Run the following code to generate graph and train TreeHop. Please refer to `parse_args` function in the [training.py](./training.py) for arguments to this script.
+For training embedding generation, please refer to code in [init_train_vectors.py](./init_train_vectors.py)
 ```sh
 python training.py --graph_cache_dir ./train_data/
 ```
