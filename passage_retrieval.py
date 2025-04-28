@@ -441,37 +441,107 @@ def parse_args():
     parser.add_argument(
         "--query",
         type=str,
-        default=None,
         help=".json file containing question and answers, similar format to reader data",
     )
-    parser.add_argument("--passages", type=str, default=None, help="Path to passages (.tsv file)")
-    parser.add_argument("--passage_embeddings", type=str, default=None, help="Glob path to encoded passages")
-    parser.add_argument("--output", type=str, help="dir path to save embeddings")
-    parser.add_argument("--shard_id", type=int, default=0, help="Id of the current shard")
-    parser.add_argument("--num_shards", type=int, default=1, help="Total number of shards")
-    parser.add_argument("--n_docs", type=int, default=10, help="Number of documents to retrieve per questions")
-    parser.add_argument("--per_gpu_batch_size", type=int, default=64, help="Batch size for question encoding")
     parser.add_argument(
-        "--save_or_load_index", action="store_true", help="If enabled, save index and load index if it exists"
+        "--passages",
+        type=str,
+        help="Path to passages (.tsv file)"
     )
     parser.add_argument(
-        "--model_name_or_path", type=str, help="path to directory containing model weights and config file"
+        "--passage_embeddings",
+        type=str,
+        default=None,
+        help="Path to encoded passages in Numpy format"
     )
-    parser.add_argument("--no_fp16", action="store_true", help="inference in fp32")
-    parser.add_argument("--question_maxlength", type=int, default=512, help="Maximum number of tokens in a question")
     parser.add_argument(
-        "--indexing_batch_size", type=int, default=1000000, help="Batch size of the number of passages indexed"
+        "--faiss_index",
+        type=str,
+        default=None,
+        help="Path to encoded passages in Faiss format"
     )
-    parser.add_argument("--projection_size", type=int, default=768)
+    parser.add_argument(
+        "--output",
+        type=str,
+        help="dir path to save embeddings"
+    )
+    parser.add_argument(
+        "--shard_id",
+        type=int,
+        default=0,
+        help="Id of the current shard"
+    )
+    parser.add_argument(
+        "--num_shards",
+        type=int,
+        default=1,
+        help="Total number of shards"
+    )
+    parser.add_argument(
+        "--n_docs",
+        type=int,
+        default=10,
+        help="Number of documents to retrieve per questions"
+    )
+    parser.add_argument(
+        "--per_gpu_batch_size",
+        type=int,
+        default=64,
+        help="Batch size for question encoding"
+    )
+    parser.add_argument(
+        "--save_or_load_index",
+        action="store_true",
+        help="If enabled, save index and load index if it exists"
+    )
+    parser.add_argument(
+        "--model_name_or_path",
+        type=str,
+        help="path to directory containing model weights and config file"
+    )
+    parser.add_argument(
+        "--no_fp16",
+        action="store_true",
+        help="inference in fp32")
+    parser.add_argument(
+        "--question_maxlength",
+        type=int,
+        default=512,
+        help="Maximum number of tokens in a question"
+    )
+    parser.add_argument(
+        "--indexing_batch_size",
+        type=int,
+        default=1000000,
+        help="Batch size of the number of passages indexed"
+    )
+    parser.add_argument(
+        "--projection_size",
+        type=int,
+        default=768
+    )
     parser.add_argument(
         "--n_subquantizers",
         type=int,
         default=0,
         help="Number of subquantizer used for vector quantization, if 0 flat index is used",
     )
-    parser.add_argument("--n_bits", type=int, default=8, help="Number of bits per subquantizer")
-    parser.add_argument("--lowercase", action="store_true", help="lowercase text before encoding")
-    parser.add_argument("--normalize_text", action="store_true", help="normalize text")
+    parser.add_argument(
+        "--n_bits",
+        type=int,
+        default=8,
+        help="Number of bits per subquantizer"
+    )
+    parser.add_argument(
+        "--lowercase",
+        action="store_true",
+        help="lowercase text before encoding"
+    )
+    parser.add_argument(
+        "--normalize_text",
+        action="store_true",
+        help="normalize text"
+    )
 
     return parser.parse_args()
 
@@ -487,6 +557,7 @@ def main():
         model_name_or_path=args.model_name_or_path,
         passages=args.passages,
         passage_embeddings=args.passage_embeddings,
+        faiss_index=args.faiss_index,
         no_fp16=args.no_fp16,
         save_or_load_index=args.save_or_load_index,
         indexing_batch_size=args.indexing_batch_size,
@@ -526,45 +597,4 @@ def main():
 
 if __name__ == "__main__":
     # --query "What is the occupation of Obama?" --passages ./wikipedia_data/psgs_w100.tsv --passage_embeddings "./wikipedia_data/embedding_contriever-msmarco/*" --model_name_or_path "facebook/contriever-msmarco" --output ./train_data/extractor_retrieve_wiki.jsonl
-    # main()
-    n_hop=2
-    top_n=10
-
-    num_negatives = 5
-    x_size = 1024
-    g_size = 2048
-    mlp_size = 2048
-    n_mlp = 3
-    dropout = 0.1
-    n_heads = 1
-    pt_file = "checkpoint/checkpoint/treehop_2wiki=0.056&musique=0.019&multihop_rag=0.098__epoch=13&n_neg=5&neg_mode=paired&g_size=2048&mlp_size=2048&n_mlp=3&n_head=1&dropout=0.1&batch_size=64&lr=6e-05&temperature=0.15&weight_decay=2e-08&seed=1307.pt"
-
-    graph_reranker = TreeHopModel(x_size, g_size, mlp_size, n_mlp, dropout, n_heads)
-    pt_state_dict = torch.load(pt_file, weights_only=True, map_location=DEVICE)
-    graph_reranker.load_state_dict(pt_state_dict)
-    graph_reranker.eval().to(DEVICE).compile()
-
-    retriever = MultiHopRetriever(
-        "BAAI/bge-m3",
-        passages="embedding_data/multihop_rag/eval_passages.jsonl",
-        passage_embeddings="embedding_data/multihop_rag/eval_content_dense.npy",
-        tree_hop_model=graph_reranker,
-        projection_size=1024,
-        save_or_load_index=True,
-        indexing_batch_size=10240,
-        index_device="cuda"
-    )
-    import pandas as pd
-    df_QA = pd.read_json("hf://datasets/yixuantt/MultiHopRAG/MultiHopRAG.json")
-    df_QA = df_QA.loc[df_QA["question_type"] != "null_query", :]
-    lst_questions = df_QA.loc[df_QA["question_type"] != "null_query", "query"].to_list()
-
-    retrieve_result = retriever.multihop_search_passages(
-        lst_questions,
-        n_hop=n_hop,
-        top_n=top_n,
-        index_batch_size=2048
-    )
-    print(retrieve_result)
-
-    # python passage_retrieval.py
+    main()
