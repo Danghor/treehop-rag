@@ -190,9 +190,7 @@ class Retriever:
         # index all passages
         input_paths = glob.glob(self.faiss_index or self.passage_embeddings)
         embeddings_dir = os.path.dirname(input_paths[0])
-        if self.save_or_load_index \
-                and isinstance(self.faiss_index, str) \
-                and os.path.exists(self.faiss_index):
+        if isinstance(self.faiss_index, str) and os.path.exists(self.faiss_index):
             self.indexer.deserialize_from(embeddings_dir)
         elif os.path.exists(self.passage_embeddings):
             self.index_encoded_data(self.passage_embeddings, self.indexing_batch_size)
@@ -202,7 +200,8 @@ class Retriever:
                 self.indexer.serialize(embeddings_dir)
         else:
             raise FileNotFoundError(
-                f"Passage embeddings not found at {self.passage_embeddings}"
+                f"Passage embeddings not found at {self.passage_embeddings}, "
+                f"or faiss index not found at {self.faiss_index}"
             )
 
         # load passages
