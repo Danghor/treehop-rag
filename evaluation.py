@@ -35,10 +35,10 @@ def get_dataset(dataset_name):
 
 
 @functools.lru_cache()
-def get_evaluate_model(model_name_or_path: str, **kwargs):
+def get_evaluate_model(model_name_or_path: str, **model_kwargs):
     if not model_name_or_path.lstrip("./").startswith("checkpoint"):
         return TreeHopModel.from_pretrained(
-            model_name_or_path, device_map="auto", **kwargs
+            model_name_or_path, **model_kwargs
         )
 
     d_params = model_file_name_to_params(model_name_or_path)
@@ -148,9 +148,14 @@ def parse_args():
 
     # retrieval model and TreeHop settings
     parser.add_argument(
-        "--state_dict", type=str,
+        "--model_name_or_path", type=str,
         default="allen-li1231/treehop-rag",
         help="Resume with saved parameters"
+    )
+    parser.add_argument(
+        "--revision", type=str,
+        default="main",
+        help="Branch name or tag name of the model to be loaded"
     )
     parser.add_argument(
         "--index_batch_size", type=int, default=10240,
@@ -176,7 +181,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
 
-    model = get_evaluate_model(args.state_dict)
+    model = get_evaluate_model(args.model_name_or_path, revision=args.revision)
     df_QA = get_dataset(args.dataset_name)
     retriever = get_retriever(args.dataset_name, model)
 
