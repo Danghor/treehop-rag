@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from huggingface_hub import PyTorchModelHubMixin
 
 from utils import NodeType
 from metrics import graph_cosine_similiarity
@@ -145,7 +146,15 @@ class TreeHopNode(nn.Module):
         return {"h": h}
 
 
-class TreeHopModel(nn.Module):
+class TreeHopModel(
+        nn.Module,
+        PyTorchModelHubMixin,
+        library_name="treehop-rag",
+        license="mit",
+        tags=["Retrieval-Augmented Generation", "Information Retrieval", "multi-hop question answering"],
+        repo_url="https://github.com/allen-li1231/treehop-rag/",
+        paper_url="https://arxiv.org/abs/2504.20114",
+    ):
     def __init__(
         self,
         x_size,

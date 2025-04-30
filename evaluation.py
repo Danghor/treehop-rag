@@ -2,7 +2,6 @@ import os
 os.environ["DGLBACKEND"] = "pytorch"
 import argparse
 import torch
-import pickle
 import functools
 import pandas as pd
 
@@ -36,8 +35,14 @@ def get_dataset(dataset_name):
 
 
 @functools.lru_cache()
-def get_evaluate_model(state_dict):
-    d_params = model_file_name_to_params(state_dict)
+def get_evaluate_model(model_name_or_path: str, **kwargs):
+    if not model_name_or_path.lstrip("./").startswith("checkpoint"):
+        return TreeHopModel.from_pretrained(
+            model_name_or_path, device_map="auto", **kwargs
+        )
+
+    d_params = model_file_name_to_params(model_name_or_path)
+
     model = TreeHopModel(
         x_size=1024,
         g_size=int(d_params["g_size"]),
@@ -46,7 +51,11 @@ def get_evaluate_model(state_dict):
         n_head=int(d_params["n_head"])
     )
 
-    pt_state_dict = torch.load(state_dict, weights_only=True, map_location=DEVICE)
+    pt_state_dict = torch.load(
+        model_name_or_path,
+        weights_only=True,
+        map_location=DEVICE
+    )
     model.load_state_dict(pt_state_dict)
     model.to(DEVICE).compile()
     return model
@@ -140,6 +149,7 @@ def parse_args():
     # retrieval model and TreeHop settings
     parser.add_argument(
         "--state_dict", type=str,
+        default="allen-li1231/treehop-rag",
         help="Resume with saved parameters"
     )
     parser.add_argument(

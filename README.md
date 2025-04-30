@@ -2,6 +2,7 @@
 
 
 [![arXiv](https://img.shields.io/badge/arXiv-2504.20114-b31b1b.svg?style=flat)](https://arxiv.org/abs/2504.20114)
+[![HuggingFace](https://img.shields.io/badge/HuggingFace-Model-blue.svg)](https://huggingface.co/allen-li1231/treehop-rag)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://img.shields.io/badge/license-MIT-blue)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-green.svg)](https://www.python.org/downloads/)
 
@@ -44,7 +45,7 @@ Please refer to [requirements.txt](/requirements.txt).
 
 
 ## Preliminaries
-This repository comes with [model parameter file](./checkpoint/treehop__epoch=8&n_neg=5&neg_mode=paired&g_size=2048&mlp_size=2048&n_mlp=3&n_head=1&dropout=0.1&batch_size=64&lr=6e-05&temperature=0.15&weight_decay=2e-08.pt) and [evaluate embedding database](./embedding_data/), activate [git LFS](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage) to clone the repository using `git lfs clone [LINK_TO_REPO]`, or pull the data under the existing local repository using:
+This repository comes with [evaluate embedding databases](./embedding_data/) for reproduction purpose. Activate [git LFS](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage) to clone the repository using `git lfs clone [LINK_TO_REPO]`, or pull the data under the existing local repository using:
 ```sh
 git lfs pull
 ```
@@ -65,18 +66,14 @@ Here we use [MultiHop RAG evaluate dataset](https://arxiv.org/abs/2401.15391) in
 The repository comes with the necessary files for the example to run, see [preliminaries](#preliminaries).
 
 ```python
-from evaluation import get_evaluate_model
+from tree_hop import TreeHopModel
 from passage_retrieval import MultiHopRetriever
 
 
 EVALUATE_DATASET = "multihop_rag"
 
-# load TreeHop model
-TREEHOP_MODEL_FILE = ("checkpoint/treehop__epoch=8&n_neg=5&neg_mode=paired"
-                      "&g_size=2048&mlp_size=2048&n_mlp=3&n_head=1&dropout=0.1"
-                      "&batch_size=64&lr=6e-05&temperature=0.15&weight_decay=2e-08.pt")
-
-tree_hop_model = get_evaluate_model(TREEHOP_MODEL_FILE)
+# load TreeHop model from HuggingFace
+tree_hop_model = TreeHopModel.from_pretrained("allen-li1231/treehop-rag")
 
 # load retriever
 retriever = MultiHopRetriever(
@@ -164,7 +161,6 @@ The script will print recall rate and average number of retrieved passages at ea
 
 ```sh
 python evaluation.py \
-    --state_dict "checkpoint/treehop__epoch=8&n_neg=5&neg_mode=paired&g_size=2048&mlp_size=2048&n_mlp=3&n_head=1&dropout=0.1&batch_size=64&lr=6e-05&temperature=0.15&weight_decay=2e-08.pt" \
     --dataset_name multihop_rag \
     --n_hop 3 \
     --top_n 5 \
