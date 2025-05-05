@@ -49,6 +49,7 @@ This repository comes with [evaluate embedding databases](./embedding_data/) for
 ```sh
 git lfs pull
 ```
+You can also download training, evaluate datasets and embedding databases from [this Google Drive link](https://drive.google.com/drive/folders/1xW6uTl1WfqpcAdSVymf3EVjyAnjE9Lbh).
 
 ### Embedding Databases
 We adopt [BGE-m3](https://arxiv.org/abs/2402.03216) for embedding generation, upon which we also train our TreeHop model for multi-hop retrieval.
