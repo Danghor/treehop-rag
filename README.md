@@ -174,7 +174,7 @@ The script will print recall rate and average number of retrieved passages at ea
 
 ```sh
 python evaluation.py \
-    --dataset_name multihop_rag \
+    --dataset_name 2wiki \
     --revision paper-reproduction \
     --n_hop 3 \
     --top_n 5 \
