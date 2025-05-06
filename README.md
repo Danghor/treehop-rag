@@ -20,6 +20,7 @@
 - [Citation](#citation)
 
 
+
 ## Introduction
 TreeHop is a lightweight, embedding-level framework designed to address the computational inefficiencies of traditional recursive retrieval paradigm in the realm of Retrieval-Augmented Generation (RAG). By eliminating the need for iterative LLM-based query rewriting, TreeHop significantly reduces latency while maintaining state-of-the-art performance. It achieves this through dynamic query embedding updates and pruning strategies, enabling a streamlined "Retrieve-Embed-Retrieve" workflow. 
 
@@ -45,16 +46,27 @@ Please refer to [requirements.txt](/requirements.txt).
 
 
 ## Preliminaries
-This repository comes with [evaluate embedding databases](./embedding_data/) for reproduction purpose. Activate [git LFS](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage) to clone the repository using `git lfs clone [LINK_TO_REPO]`, or pull the data under the existing local repository using:
+This repository comes with [evaluate embedding databases](./embedding_data/) for reproduction purpose. Activate [git LFS](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage) to clone the repository using:
+```sh
+git lfs clone [LINK_TO_REPO]
+```
+
+If you do not wish to download data and only need the codebase, clone the repository using:
+```sh
+GIT_LFS_SKIP_SMUDGE=1 git clone --filter=blob:none [LINK_TO_REPO]
+```
+
+You may pull the data later using:
 ```sh
 git lfs pull
 ```
-You can also download training, evaluate datasets and embedding databases from [this Google Drive link](https://drive.google.com/drive/folders/1xW6uTl1WfqpcAdSVymf3EVjyAnjE9Lbh).
+
+Alternatively, follow [this Google Drive link](https://drive.google.com/drive/folders/1xW6uTl1WfqpcAdSVymf3EVjyAnjE9Lbh) to download training, evaluate datasets and embedding databases.
 
 ### Embedding Databases
 We adopt [BGE-m3](https://arxiv.org/abs/2402.03216) for embedding generation, upon which we also train our TreeHop model for multi-hop retrieval.
 Run the following two scripts that generate all necessary training and evaluate embedding databases.
-You are **not required** to run them if you do not plan to train TreeHop, as all necessary evaluate embedding databases are provided in the repository.
+You are **not required** to run them if you do not want to train TreeHop, as all necessary evaluate embedding databases are provided in the repository.
 
 ```sh
 python init_train_vectors.py
