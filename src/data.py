@@ -251,7 +251,7 @@ def load_regular_data(path, *args, **kwargs):
         df = pd.read_parquet(path, *args, **kwargs)
         return df.to_dict()
     elif path.endswith(".npy") or path.endswith(".npz"):
-        return np.load(path, *args, **kwargs)
+        return np.load(path, allow_pickle=True, *args, **kwargs)
     else:
         raise ValueError("Unsupported file format.")
 
