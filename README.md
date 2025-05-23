@@ -80,8 +80,7 @@ The repository comes with the necessary files for the example to run, see [preli
 
 ```python
 from tree_hop import TreeHopModel
-from passage_retrieval import MultiHopRetriever
-
+from MultihopRetriever import MultiHopRetriever
 
 EVALUATE_DATASET = "multihop_rag"
 

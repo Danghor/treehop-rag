@@ -6,7 +6,7 @@ import functools
 import pandas as pd
 
 from src.utils import DEVICE
-from passage_retrieval import MultiHopRetriever
+from MultihopRetriever import MultiHopRetriever
 from tree_hop.model import TreeHopModel
 
 
