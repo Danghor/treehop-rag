@@ -80,8 +80,7 @@ The repository comes with the necessary files for the example to run, see [preli
 
 ```python
 from tree_hop import TreeHopModel
-from passage_retrieval import MultiHopRetriever
-
+from MultihopRetriever import MultiHopRetriever
 
 EVALUATE_DATASET = "multihop_rag"
 
@@ -90,16 +89,16 @@ tree_hop_model = TreeHopModel.from_pretrained("allen-li1231/treehop-rag")
 
 # load retriever
 retriever = MultiHopRetriever(
-    "BAAI/bge-m3",
-    passages=f"embedding_data/{EVALUATE_DATASET}/eval_passages.jsonl",
-    passage_embeddings=f"embedding_data/{EVALUATE_DATASET}/eval_content_dense.npy",
-    # uncomment this if faiss index is initialized, resulting in a faster loading
-    # faiss_index=f"embedding_data/{EVALUATE_DATASET}/index.faiss",
-    tree_hop_model=tree_hop_model,
-    projection_size=1024,
-    save_or_load_index=True,
-    indexing_batch_size=10240,
-    index_device="cuda"     # or cpu on Apple Metal
+  "BAAI/bge-m3",
+  passages=f"embedding_data/{EVALUATE_DATASET}/eval_passages.jsonl",
+  passage_embeddings=f"embedding_data/{EVALUATE_DATASET}/eval_content_dense.npy",
+  # uncomment this if faiss index is initialized, resulting in a faster loading
+  # faiss_index=f"embedding_data/{EVALUATE_DATASET}/index.faiss",
+  tree_hop_model=tree_hop_model,
+  projection_size=1024,
+  save_or_load_index=True,
+  indexing_batch_size=10240,
+  index_device="cuda"  # or cpu on Apple Metal
 )
 ```
 > :bell: Notes
