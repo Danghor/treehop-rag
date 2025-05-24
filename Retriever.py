@@ -18,7 +18,7 @@ from src.utils import DEVICE
 class Retriever:
     def __init__(self,
         model_name_or_path: str,
-        passages: str,
+        passages: str | list,
         passage_embeddings: str | None = None,
         faiss_index: str | None = None,
         no_fp16=False,
@@ -182,7 +182,8 @@ class Retriever:
             )
 
         # load passages
-        self.passages = src.data.load_regular_data(self.passages)
+        if isinstance(self.passages, str):
+            self.passages = src.data.load_regular_data(self.passages)
         self.passage_id_map = {x["id"]: x for x in self.passages}
         print(f"{len(self.passages)} passages have been loaded")
 

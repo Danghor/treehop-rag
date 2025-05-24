@@ -12,7 +12,7 @@ class MultiHopRetriever(Retriever):
     def __init__(
         self,
         model_name_or_path: str,
-        passages: str,
+        passages: str | list,
         tree_hop_model: TreeHopModel,
         passage_embeddings: str | None = None,
         faiss_index: str | None = None,
