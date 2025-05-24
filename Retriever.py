@@ -5,6 +5,7 @@ from typing import Union, Iterable
 import faiss
 
 import numpy as np
+import numpy.typing as npt
 import torch
 
 import src.data
@@ -17,22 +18,22 @@ from src.utils import DEVICE
 
 class Retriever:
     def __init__(self,
-        model_name_or_path: str,
-        passages: str | list,
-        passage_embeddings: str | None = None,
-        faiss_index: str | None = None,
-        no_fp16=False,
-        save_or_load_index=False,
-        indexing_batch_size=1000000,
-        lowercase=False,
-        normalize_text=True,
-        per_gpu_batch_size=64,
-        query_maxlength=512,
-        projection_size=768,
-        n_subquantizers=0,
-        n_bits=8,
-        index_device="cpu"
-    ):
+                 model_name_or_path: str,
+                 passages: str | list,
+                 passage_embeddings: str | npt.NDArray | None = None,
+                 faiss_index: str | None = None,
+                 no_fp16=False,
+                 save_or_load_index=False,
+                 indexing_batch_size=1000000,
+                 lowercase=False,
+                 normalize_text=True,
+                 per_gpu_batch_size=64,
+                 query_maxlength=512,
+                 projection_size=768,
+                 n_subquantizers=0,
+                 n_bits=8,
+                 index_device="cpu"
+                 ):
         self.model_name_or_path = model_name_or_path
         self.passages = passages
         self.passage_embeddings = passage_embeddings
@@ -65,7 +66,6 @@ class Retriever:
             batch_query.append(q)
 
             if len(batch_query) == self.per_gpu_batch_size or k == len(queries) - 1:
-
                 encoded_batch = self.tokenizer.batch_encode_plus(
                     batch_query,
                     return_tensors="pt",
@@ -82,6 +82,33 @@ class Retriever:
 
         embeddings = torch.cat(embeddings, dim=0)
         return embeddings
+
+    def index_encoded_data_array(self, data: npt.NDArray, indexing_batch_size):
+        # Some of this code is probaly obsolete, but it was the easiest to just create this method by
+        # copying index_encoded_data and making some minor changes
+        all_ids = []
+        all_embeddings = []
+        start_idx = 0
+
+        print(f"Indexing passages from data {data.shape}")
+        start_time_indexing = time.time()
+        if isinstance(data, tuple):
+            ids, embeddings = data
+        else:
+            embeddings = data
+            ids = list(range(start_idx, start_idx + len(embeddings)))
+            start_idx += len(embeddings)
+
+        all_ids.extend(ids)
+        all_embeddings.append(embeddings)
+
+        all_embeddings = np.vstack(all_embeddings)
+        while all_embeddings.shape[0] > 0:
+            all_embeddings, all_ids = self._batch_add_embeddings(
+                all_embeddings, all_ids, indexing_batch_size
+            )
+
+        print(f"Indexing time: {time.time() - start_time_indexing:.1f} s.")
 
     def index_encoded_data(self, input_paths, indexing_batch_size):
         input_paths = sorted(glob.glob(input_paths))
@@ -109,7 +136,7 @@ class Retriever:
                 all_embeddings, all_ids, indexing_batch_size
             )
 
-        print(f"Indexing time: {time.time()-start_time_indexing:.1f} s.")
+        print(f"Indexing time: {time.time() - start_time_indexing:.1f} s.")
 
     def _batch_add_embeddings(self, embeddings, ids, indexing_batch_size):
         end_idx = min(indexing_batch_size, embeddings.shape[0])
@@ -165,21 +192,25 @@ class Retriever:
                     self.indexer.index = faiss.index_cpu_to_all_gpus(self.indexer.index)
 
         # index all passages
-        input_paths = glob.glob(self.faiss_index or self.passage_embeddings)
-        embeddings_dir = os.path.dirname(input_paths[0])
-        if isinstance(self.faiss_index, str) and os.path.exists(self.faiss_index):
-            self.indexer.deserialize_from(embeddings_dir)
-        elif os.path.exists(self.passage_embeddings):
-            self.index_encoded_data(self.passage_embeddings, self.indexing_batch_size)
-            if self.save_or_load_index:
-                if getattr(self.index_device, "type", self.index_device).startswith("cuda"):
-                    self.indexer.index = faiss.index_gpu_to_cpu(self.indexer.index)
-                self.indexer.serialize(embeddings_dir)
+        if isinstance(self.passage_embeddings, npt.NDArray):
+            self.index_encoded_data_array(self.passage_embeddings, self.indexing_batch_size)
+            assert self.save_or_load_index == False
         else:
-            raise FileNotFoundError(
-                f"Passage embeddings not found at {self.passage_embeddings}, "
-                f"or faiss index not found at {self.faiss_index}"
-            )
+            input_paths = glob.glob(self.faiss_index or self.passage_embeddings)
+            embeddings_dir = os.path.dirname(input_paths[0])
+            if isinstance(self.faiss_index, str) and os.path.exists(self.faiss_index):
+                self.indexer.deserialize_from(embeddings_dir)
+            elif os.path.exists(self.passage_embeddings):
+                self.index_encoded_data(self.passage_embeddings, self.indexing_batch_size)
+                if self.save_or_load_index:
+                    if getattr(self.index_device, "type", self.index_device).startswith("cuda"):
+                        self.indexer.index = faiss.index_gpu_to_cpu(self.indexer.index)
+                    self.indexer.serialize(embeddings_dir)
+            else:
+                raise FileNotFoundError(
+                    f"Passage embeddings not found at {self.passage_embeddings}, "
+                    f"or faiss index not found at {self.faiss_index}"
+                )
 
         # load passages
         if isinstance(self.passages, str):
@@ -198,19 +229,19 @@ class Retriever:
         return passage_embedding
 
     def search_passages(
-        self,
-        query: Union[str, Iterable[str], torch.Tensor, np.ndarray],
-        top_n=10,
-        index_batch_size=2048,
-        return_query_embeddings=False,
-        return_passage_embeddings=False
+            self,
+            query: Union[str, Iterable[str], torch.Tensor, np.ndarray],
+            top_n=10,
+            index_batch_size=2048,
+            return_query_embeddings=False,
+            return_passage_embeddings=False
     ):
         queries = [query] if isinstance(query, str) else query
 
         query_embeddings = \
             queries \
-            if isinstance(queries, (torch.Tensor, np.ndarray)) \
-            else self.embed_queries(queries)
+                if isinstance(queries, (torch.Tensor, np.ndarray)) \
+                else self.embed_queries(queries)
 
         if isinstance(query_embeddings, torch.Tensor):
             query_embeddings = query_embeddings.cpu().numpy()

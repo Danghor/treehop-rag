@@ -1,6 +1,7 @@
 from typing import Union, List
 
 import numpy as np
+import numpy.typing as npt
 from tqdm.asyncio import tqdm
 
 from Retriever import Retriever
@@ -14,7 +15,7 @@ class MultiHopRetriever(Retriever):
         model_name_or_path: str,
         passages: str | list,
         tree_hop_model: TreeHopModel,
-        passage_embeddings: str | None = None,
+        passage_embeddings: str | npt.NDArray | None = None,
         faiss_index: str | None = None,
         no_fp16=True,
         save_or_load_index=False,
