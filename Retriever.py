@@ -1,6 +1,7 @@
 import glob
 import os
 import time
+from collections import namedtuple
 from typing import Union, Iterable
 import faiss
 
@@ -12,12 +13,17 @@ import src.data
 import src.index
 import src.normalize_text
 import src.slurm
-from passage_retrieval import search_passage_results
 from src.utils import DEVICE
 
+search_passage_results = namedtuple(
+    "search_passage_results",
+    fields := ["passage", "score", "query_embedding", "passage_embedding"],
+    defaults=(None,) * len(fields)
+)
 
 class Retriever:
     def __init__(self,
+                 faiss_embeddings_dir: str,
                  model_name_or_path: str,
                  passages: str | list,
                  passage_embeddings: str | npt.NDArray | None = None,
@@ -52,6 +58,7 @@ class Retriever:
         self.n_subquantizers = n_subquantizers
         self.n_bits = n_bits
         self.index_device = index_device
+        self.faiss_embeddings_dir = faiss_embeddings_dir
 
         self.setup_retriever()
 
@@ -192,9 +199,13 @@ class Retriever:
                     self.indexer.index = faiss.index_cpu_to_all_gpus(self.indexer.index)
 
         # index all passages
-        if isinstance(self.passage_embeddings, npt.NDArray):
+        if isinstance(self.passage_embeddings, np.ndarray):
             self.index_encoded_data_array(self.passage_embeddings, self.indexing_batch_size)
-            assert self.save_or_load_index == False
+            if self.save_or_load_index:
+                if getattr(self.index_device, "type", self.index_device).startswith("cuda"):
+                    self.indexer.index = faiss.index_gpu_to_cpu(self.indexer.index)
+                os.makedirs(self.faiss_embeddings_dir, exist_ok=True)
+                self.indexer.serialize(self.faiss_embeddings_dir)
         else:
             input_paths = glob.glob(self.faiss_index or self.passage_embeddings)
             embeddings_dir = os.path.dirname(input_paths[0])

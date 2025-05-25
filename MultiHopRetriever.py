@@ -12,6 +12,7 @@ from tree_hop import TreeHopModel, TreeHopGraph
 class MultiHopRetriever(Retriever):
     def __init__(
         self,
+        faiss_embeddings_dir: str,
         model_name_or_path: str,
         passages: str | list,
         tree_hop_model: TreeHopModel,
@@ -30,6 +31,7 @@ class MultiHopRetriever(Retriever):
         index_device="cpu"
     ):
         super().__init__(
+            faiss_embeddings_dir=faiss_embeddings_dir,
             model_name_or_path=model_name_or_path,
             passages=passages,
             faiss_index=faiss_index,
