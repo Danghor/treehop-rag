@@ -16,12 +16,6 @@ from utils import load_file_jsonl, save_file_jsonl
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
-search_passage_results = namedtuple(
-    "search_passage_results",
-    fields := ["passage", "score", "query_embedding", "passage_embedding"],
-    defaults=(None,) * len(fields)
-)
-
 multihop_search_passage_results = namedtuple(
     "multihop_search_passage_results",
     fields := ["passage", "tree_hop_graph"],
