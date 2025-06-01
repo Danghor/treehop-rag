@@ -1,149 +1,16 @@
 from typing import Union
+
 import dgl
 import numpy as np
-
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from huggingface_hub import PyTorchModelHubMixin
+from torch import nn as nn
+from torch.nn import functional as F
 
-from utils import NodeType
 from metrics import graph_cosine_similiarity
-
-from .dataset import TreeHopInferenceDataset
-
-
-class ResNet(torch.nn.Module):
-    def __init__(self, input_size):
-        super().__init__()
-        self.input_size = input_size
-        self.linear = nn.Linear(input_size, input_size)
-        self.activate = nn.ReLU()
-        self.layer_norm = nn.LayerNorm(input_size)
-
-    def forward(self, x):
-        # post Norm
-        x_norm = self.layer_norm(x)
-        x = x + self.activate(self.linear(x_norm))
-        return x
-
-
-class MultiMLPLayer(nn.Module):
-    def __init__(
-        self,
-        input_size,
-        mlp_size,
-        num_layers: int = 1
-    ):
-        super(MultiMLPLayer, self).__init__()
-        self.layers = nn.Sequential()
-
-        for i in range(num_layers):
-            if i == 0 and input_size != mlp_size:
-                self.layers.append(nn.Linear(input_size, mlp_size))
-                self.layers.append(ResNet(mlp_size))
-            else:
-                self.layers.append(ResNet(mlp_size))
-
-    def forward(self, x):
-        x_out = self.layers(x)
-        return x_out
-
-
-class AttentionHead2D(nn.Module):
-    def __init__(
-        self,
-        input_size,
-        attn_size,
-        mlp_size,
-        *,
-        bias=True,
-        num_mlp=1,
-        dropout=0.1
-    ):
-        super(AttentionHead2D, self).__init__()
-        self.W_Q = nn.Linear(input_size, attn_size, bias=bias)
-        self.W_K = nn.Linear(input_size, attn_size, bias=bias)
-        self.W_V = nn.Linear(input_size, attn_size, bias=bias)
-
-        # self.activate = nn.ReLU()
-        self.mlp = MultiMLPLayer(attn_size, mlp_size, num_layers=num_mlp)
-        self.dropout = nn.Dropout(dropout)
-        self.mlp_scale = nn.Linear(mlp_size, attn_size, bias=bias)
-
-    def forward(self, Q, K, V):
-        Q, K, V = self.W_Q(Q), self.W_K(K), self.W_V(V)
-        if Q.dim() == 3:
-            QK = torch.einsum("bud,bud->bd", Q, K)
-        elif Q.dim() == 2:
-            QK = Q * K
-        else:
-            raise IndexError(f"Not a supported input dimension: {Q.dim()}")
-
-        # instead of matmul in 3D, use elementwise mul, then normalize
-        scores = QK / Q.shape[1] ** 0.5
-        attn = F.softmax(scores, dim=-1)
-        attn_out = self.dropout(attn) * V
-
-        mlp_out = self.mlp(attn_out)
-
-        return self.mlp_scale(mlp_out) + attn_out
-
-
-class MultiHeadAttention2D(nn.Module):
-    def __init__(
-        self,
-        input_size,
-        attn_size,
-        mlp_size,
-        num_mlp=1,
-        num_heads=1,
-        bias=True,
-        dropout=0.1
-    ):
-        if not isinstance(num_heads, int) or num_heads < 1:
-            raise ValueError("num_heads must be a positive integer")
-
-        super(MultiHeadAttention2D, self).__init__()
-
-        self.num_heads = num_heads
-        self.heads = nn.ModuleList([
-            AttentionHead2D(input_size, attn_size, mlp_size,
-                            num_mlp=num_mlp, bias=bias, dropout=dropout)
-            for _ in range(num_heads)
-        ])
-
-    def forward(self, Q, K, V):
-        lst_attn_out = []
-        for attn_head in self.heads:
-            out = attn_head(Q, K, V)
-            lst_attn_out.append(out)
-
-        attn_out = torch.cat(lst_attn_out, dim=-1)
-        return attn_out
-
-
-class TreeHopNode(nn.Module):
-    def __init__(self, embed_size, g_size, mlp_size, n_mlp=1, n_head=1):
-        super(TreeHopNode, self).__init__()
-        self.update_gate = MultiHeadAttention2D(
-            embed_size, g_size, mlp_size,
-            num_heads=n_head,
-            num_mlp=n_mlp,
-            dropout=0.
-        )
-        self.update_attn_scale = nn.Linear(g_size * n_head, embed_size, bias=False)
-
-    def reduce_func(self, nodes):
-        # message passing
-        Q = nodes.mailbox["q"].clone().squeeze(1)         # last query
-        K = nodes.data["rep"]           # this ctx
-        V_update = nodes.data["rep"]           # this ctx
-
-        update_gate = self.update_gate(Q, K, V_update)
-
-        h = Q - K + self.update_attn_scale(update_gate)
-        return {"h": h}
+from tree_hop.TreeHopNode import TreeHopNode
+from tree_hop.dataset import TreeHopInferenceDataset
+from utils import NodeType
 
 
 class TreeHopModel(
@@ -248,7 +115,7 @@ class TreeHopModel(
 
             if isinstance(mask, list):
                 mask = np.asarray(mask)
-        
+
             if isinstance(mask, np.ndarray):
                 mask = torch.from_numpy(mask)
 
