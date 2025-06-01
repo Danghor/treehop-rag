@@ -1,3 +1,3 @@
 from .dataset import TreeHopTrainDataset
-from .model import TreeHopModel
+from .TreeHopModel import TreeHopModel
 from .graph import TreeHopGraph
