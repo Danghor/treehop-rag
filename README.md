@@ -202,3 +202,54 @@ python training.py --graph_cache_dir ./train_data/
       url={https://arxiv.org/abs/2504.20114}, 
 }
 ```
+
+## Install (Danghor)
+
+- install RockyLinux 8.1
+- add user to sudoers file
+
+### Install DKMS
+```bash
+sudo dnf install epel-release
+sudo dnf install dkms
+```
+
+### Install CUDA 12.1
+- https://developer.nvidia.com/cuda-12-1-0-download-archive?target_os=Linux&target_arch=x86_64&Distribution=Rocky&target_version=8&target_type=rpm_local
+```bash
+ wget https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-rhel8-12-1-local-12.1.0_530.30.02-1.x86_64.rpm
+ sudo rpm -i cuda-repo-rhel8-12-1-local-12.1.0_530.30.02-1.x86_64.rpm
+ sudo dnf clean all
+ sudo dnf -y module install nvidia-driver:latest-dkms
+ sudo dnf -y install cuda
+```
+
+- install git
+```bash
+sudo dnf install git
+```
+
+- install PyCharm or whatever IDE
+- clone repository
+
+- create conda environment with Python 3.10
+- comment out this line in the requirements.txt
+
+```
+pygraphviz==1.14
+```
+
+```
+# pygraphviz==1.14
+```
+
+- change version of huggingface-hub (maybe even update the version in the file directly instead of writing about it in the readme)
+  - version should be huggingface-hub 0.31.2
+- use faiss-gpu 1.7.2 (instead of the cu121 version (check which one was used))
+  - fixes the error `Faiss assertion 'err__ == cudaSuccess' failed in void faiss::gpu::runL2Norm(faiss::gpu::Tensor<T, 2, true>&, bool, faiss::gpu::Tensor<float, 1, true>&, bool, cudaStream_t) [with T = float; TVec = float4; cudaStream_t = CUstream_st*] at /project/faiss/faiss/gpu/impl/L2Norm.cu:257; details: CUDA error 209 no kernel image is available for execution on the device`
+
+### Install pip packages
+pip install torch==2.4.0 torchaudio==2.4.0 torchvision==0.19.0 --index-url https://download.pytorch.org/whl/cu121
+pip install torchdata==0.8.0
+pip install dgl==2.4.0+cu121 -f https://data.dgl.ai/wheels/torch-2.4/cu121/repo.html
+pip install -r requirements.txt 
