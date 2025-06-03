@@ -213,3 +213,108 @@ python training.py --graph_cache_dir ./train_data/
       url={https://arxiv.org/abs/2504.20114}, 
 }
 ```
+
+## Fork Modifications (Danghor)
+
+This fork contains modifications to the original TreeHop repository to enable isolated evaluation of hop 2 performance in modular multi-hop retrieval. The goal was to evaluate the second hop independently of the first hop, providing insights into the model's performance at each retrieval stage.
+
+### Key Modifications
+
+- **Isolated hop evaluation**: Modified source code to enable independent evaluation of hop 2 performance
+- **Package version changes**: Changed some package versions in the `requirements.txt` because the version stated there did not work with the source code
+  - `huggingface-hub` version has been changed: `huggingface-hub==0.31.2`
+  - `pygraphviz` has been removed: `# pygraphviz==1.14`
+
+### Installation Instructions
+
+#### 1. System Setup
+
+##### Install Rocky Linux 8.1
+
+- Download and install Rocky Linux 8.1
+  - This was the first OS I was able to run the code on. Especially the [DGL package](https://www.dgl.ai/pages/start.html) provided some difficulties since it has limited support for Windows and macOS and also did not work on the Ubuntu versions I tried.
+- Add your user to the sudoers file for administrative privileges
+
+#### 2. Install Development Tools
+
+##### Install DKMS (Dynamic Kernel Module Support)
+
+```bash
+sudo dnf install epel-release
+sudo dnf install dkms
+```
+
+##### Install Git
+
+```bash
+sudo dnf install git
+```
+
+#### 3. Install CUDA 12.1
+
+Download and install CUDA 12.1 specifically for compatibility:
+
+```bash
+# Download CUDA 12.1 installer
+wget https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda-repo-rhel8-12-1-local-12.1.0_530.30.02-1.x86_64.rpm
+
+# Install CUDA repository
+sudo rpm -i cuda-repo-rhel8-12-1-local-12.1.0_530.30.02-1.x86_64.rpm
+
+# Clean package cache and install CUDA
+sudo dnf clean all
+sudo dnf -y module install nvidia-driver:latest-dkms
+sudo dnf -y install cuda
+```
+
+> **Note**: CUDA 12.1 is specifically required for this fork's evaluation pipeline. Using other CUDA versions may cause compatibility issues.
+
+#### 4. Clone Repository
+
+```bash
+git clone https://github.com/Danghor/treehop-rag.git
+cd treehop-rag
+```
+
+#### 5. Python Environment Setup
+
+##### Create Conda Environment
+
+```bash
+conda create -n treehop python=3.10
+conda activate treehop
+```
+
+#### 6. Package Installation
+
+The packages have to be installed in that order. Simply installing from `requirements.txt` will not work.
+
+##### Install PyTorch and Related Packages
+
+```bash
+pip install torch==2.4.0 torchaudio==2.4.0 torchvision==0.19.0 --index-url https://download.pytorch.org/whl/cu121
+pip install torchdata==0.8.0
+pip install dgl==2.4.0+cu121 -f https://data.dgl.ai/wheels/torch-2.4/cu121/repo.html
+```
+
+##### Install Modified Requirements
+
+```bash
+pip install -r requirements.txt
+```
+
+##### Update Specific Package Versions
+
+This step may or may not be necessary depending on the system. If the error below occurs, this step may help resolve it.
+
+```bash
+# Install specific faiss-gpu version to fix CUDA kernel errors
+pip install faiss-gpu==1.7.2
+```
+
+This can avoid the following error:
+
+```text
+Faiss assertion 'err__ == cudaSuccess' failed in void faiss::gpu::runL2Norm... 
+CUDA error 209 no kernel image is available for execution on the device
+```
