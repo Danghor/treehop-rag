@@ -1,13 +1,12 @@
 # TreeHop: Generate and Filter Next Query Embeddings Efficiently for Multi-hop Question Answering
 
-
 [![arXiv](https://img.shields.io/badge/arXiv-2504.20114-b31b1b.svg?style=flat)](https://arxiv.org/abs/2504.20114)
 [![HuggingFace](https://img.shields.io/badge/HuggingFace-Model-blue.svg)](https://huggingface.co/allen-li1231/treehop-rag)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://img.shields.io/badge/license-MIT-blue)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-green.svg)](https://www.python.org/downloads/)
 
-
 ## Table of Contents
+
 - [Introduction](#introduction)
 - [Why TreeHop for Multi-hop Retrieval?](#why-treehop-for-multi-hop-retrieval)
 - [System Requirement](#system-requirement)
@@ -19,14 +18,14 @@
 - [Training TreeHop](#training-treehop)
 - [Citation](#citation)
 
-
-
 ## Introduction
-TreeHop is a lightweight, embedding-level framework designed to address the computational inefficiencies of traditional recursive retrieval paradigm in the realm of Retrieval-Augmented Generation (RAG). By eliminating the need for iterative LLM-based query rewriting, TreeHop significantly reduces latency while maintaining state-of-the-art performance. It achieves this through dynamic query embedding updates and pruning strategies, enabling a streamlined "Retrieve-Embed-Retrieve" workflow. 
+
+TreeHop is a lightweight, embedding-level framework designed to address the computational inefficiencies of traditional recursive retrieval paradigm in the realm of Retrieval-Augmented Generation (RAG). By eliminating the need for iterative LLM-based query rewriting, TreeHop significantly reduces latency while maintaining state-of-the-art performance. It achieves this through dynamic query embedding updates and pruning strategies, enabling a streamlined "Retrieve-Embed-Retrieve" workflow.
 
 ![Simplified Iteration Enabled by TreeHop in RAG system](pics/TreeHop_iteration.png)
 
 ## Why TreeHop for Multi-hop Retrieval?
+
 - **Handle Complex Queries**: Real-world questions often require multiple hops to retrieve relevant information, which traditional retrieval methods struggle with.
 - **Cost-Effective**: 25M parameters vs. billions in existing query rewriters, significantly reducing computational overhead.
 - **Speed**: 99% faster inference compared to iterative LLM approaches, ideal for industrial applications where response speed is crucial.
@@ -34,29 +33,33 @@ TreeHop is a lightweight, embedding-level framework designed to address the comp
 
 ![Main Experiment](pics/main_experiment.png)
 
-
 ## System Requirement
-> Ubuntu 18.06 LTS+ or MacOS Big Sur+. \
+>
+> Ubuntu 18.06 LTS+ or macOS Big Sur+. \
 > Nvidia GPU or Apple Metal with 32GB of RAM at minimum. \
-> 16GB of system RAM for [reproduction](#paper-reproduction), 64GB for [training](#train-treehop). \
+> 16GB of system RAM for [reproduction](#paper-reproduction), 64GB for [training](#training-treehop). \
 > 50GB of free space on hard drive.
 
 ### Python Environment
+
 Please refer to [requirements.txt](/requirements.txt).
 
-
 ## Preliminaries
+
 This repository comes with [evaluate embedding databases](./embedding_data/) for reproduction purpose. Activate [git LFS](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage) to clone the repository using:
+
 ```sh
 git lfs clone [LINK_TO_REPO]
 ```
 
 If you do not wish to download data and only need the codebase, clone the repository using:
+
 ```sh
 GIT_LFS_SKIP_SMUDGE=1 git clone --filter=blob:none [LINK_TO_REPO]
 ```
 
 You may pull the data later using:
+
 ```sh
 git lfs pull
 ```
@@ -64,6 +67,7 @@ git lfs pull
 Alternatively, follow [this Google Drive link](https://drive.google.com/drive/folders/1xW6uTl1WfqpcAdSVymf3EVjyAnjE9Lbh) to download training, evaluate datasets and embedding databases.
 
 ### Embedding Databases
+
 We adopt [BGE-m3](https://arxiv.org/abs/2402.03216) for embedding generation, upon which we also train our TreeHop model for multi-hop retrieval.
 Run the following two scripts that generate all necessary training and evaluate embedding databases.
 You are **not required** to run them if you do not want to train TreeHop, as all necessary evaluate embedding databases are provided in the repository.
@@ -73,8 +77,8 @@ python init_train_vectors.py
 python init_multihop_rag.py
 ```
 
-
 ## Multi-hop Retrieval with TreeHop: How-to-Use
+
 Here we use [MultiHop RAG evaluate dataset](https://arxiv.org/abs/2401.15391) in the example below.
 The repository comes with the necessary files for the example to run, see [preliminaries](#preliminaries).
 
@@ -101,13 +105,16 @@ retriever = MultiHopRetriever(
     index_device="cuda"     # or cpu on Apple Metal
 )
 ```
+
 > :bell: Notes
-> * The passage jsonl file contains id, title and text for each passage in the retrieval database.
-> * The passage_embeddings and faiss_index file contain passage embeddings in numpy array and faiss index format, respectively. To replace them with your own database, please refer to logics in [init_multihop_rag.py](init_multihop_rag.py).
-> * For more detailed structure of passages file, please refer to [MultiHop RAG evaluate passages file](embedding_data/multihop_rag/eval_passages.jsonl).
+>
+> - The passage jsonl file contains id, title and text for each passage in the retrieval database.
+> - The passage_embeddings and faiss_index file contain passage embeddings in numpy array and faiss index format, respectively. To replace them with your own database, please refer to logics in [init_multihop_rag.py](init_multihop_rag.py).
+> - For more detailed structure of passages file, please refer to [MultiHop RAG evaluate passages file](embedding_data/multihop_rag/eval_passages.jsonl).
 
 The `retriever` has `multihop_search_passages` method that supports retrieving both single query and batch queries.
 For single query:
+
 ```python
 retrieve_result = retriever.multihop_search_passages(
     "Did Engadget report a discount on the 13.6-inch MacBook Air \
@@ -118,6 +125,7 @@ retrieve_result = retriever.multihop_search_passages(
 ```
 
 For batch queries:
+
 ```python
 LIST_OF_QUESTIONS = [
     "Did Engadget report a discount on the 13.6-inch MacBook Air \
@@ -137,6 +145,7 @@ retrieve_result = retriever.multihop_search_passages(
 ```
 
 To access retrieved passages and corresponding multi-hop retrieval paths:
+
 ```python
 # retrieved passages for questions
 print(retrieve_result.passage)
@@ -161,15 +170,16 @@ retrieval_tree.plot_tree()
 print(retrieval_tree.nodes(data=True))
 ```
 
-
 ## Paper Reproduction
+
 To evaluate the multi-hop retrieval performance of TreeHop, run the following code. Here we take 2WikiMultihop dataset and recall@5 under three hops as example.
 The script will print recall rate and average number of retrieved passages at each hop, as well as statistics by types of question.
 
 > :bell: Notes
-> * To change evaluate dataset, replace `2wiki` with `musique` or `multihop_rag`.
-> * Revise `n_hop` and `top_n` to change number of hops and top retrieval settings. 
-> * Toggle `redundant_pruning` and `layerwise_top_pruning` to reproduce our ablation study on stop criterion.
+>
+> - To change evaluate dataset, replace `2wiki` with `musique` or `multihop_rag`.
+> - Revise `n_hop` and `top_n` to change number of hops and top retrieval settings.
+> - Toggle `redundant_pruning` and `layerwise_top_pruning` to reproduce our ablation study on stop criterion.
 
 ```sh
 python evaluation.py \
@@ -181,16 +191,17 @@ python evaluation.py \
     --layerwise_top_pruning True
 ```
 
-
 ## Training TreeHop
+
 Run the following code to generate graph and train TreeHop. Please refer to `parse_args` function in the [training.py](./training.py) for arguments to this script.
 For training embedding generation, please refer to code in [init_train_vectors.py](./init_train_vectors.py)
+
 ```sh
 python training.py --graph_cache_dir ./train_data/
 ```
 
-
 ## Citation
+
 ```cite
 @misc{li2025treehopgeneratefilterquery,
       title={TreeHop: Generate and Filter Next Query Embeddings Efficiently for Multi-hop Question Answering}, 
